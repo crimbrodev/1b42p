@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>42 Братуха - Тапалка</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent-color: #f7b733;
+            --text-main: #ffffff;
+            --text-muted: #b0bec5;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- ШАПКА (Логотип и Баланс) --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 20px;
+            z-index: 10;
+        }
+
+        /* Увеличенный логотип слева сверху */
+        .logo-circle {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background-color: var(--accent-color);
+            background-image: url('logo.jpg'); /* КАРТИНКА ЛОГОТИПА */
+            background-size: cover;
+            background-position: center;
+            border: 3px solid var(--accent-color);
+            box-shadow: 0 0 15px rgba(247, 183, 51, 0.5);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .logo-circle:active {
+            transform: scale(0.9);
+        }
+
+        .balance-box {
+            text-align: right;
+            background: var(--glass-bg);
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(10px);
+        }
+
+        .balance-box h1 { font-size: 28px; font-weight: 900; margin-bottom: 2px; }
+        .balance-box span { font-size: 12px; color: var(--text-muted); }
+
+        /* --- ОСНОВНАЯ ЗОНА (Кликер) --- */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .clicker-wrapper { position: relative; margin-bottom: 30px; }
+
+        .clicker-glow {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 280px; height: 280px;
+            background: radial-gradient(circle, rgba(247, 183, 51, 0.4) 0%, rgba(0,0,0,0) 70%);
+            border-radius: 50%; z-index: 1; pointer-events: none;
+            animation: pulse-glow 2s infinite alternate;
+        }
+
+        #clicker-btn {
+            position: relative; z-index: 2;
+            width: 240px; height: 240px; border-radius: 50%;
+            background-color: #2c3e50;
+            background-image: url('5opka.jpg'); /* ФОТО ПЯТЕРКИ */
+            background-size: cover; background-position: center;
+            border: 4px solid var(--accent-color);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.5);
+            cursor: pointer; transition: transform 0.05s ease-out;
+        }
+
+        #clicker-btn:active { transform: scale(0.92); }
+
+        /* Энергия */
+        .energy-wrapper { width: 80%; max-width: 300px; text-align: center; }
+        .energy-stats { font-size: 14px; font-weight: 700; color: var(--text-muted); display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .energy-bar-bg { height: 14px; background: rgba(0, 0, 0, 0.5); border-radius: 10px; overflow: hidden; border: 1px solid var(--glass-border); }
+        #energy-fill { height: 100%; background: linear-gradient(90deg, #f12711, #f5af19); width: 100%; transition: width 0.2s ease-out; }
+
+        /* Плавающие циферки */
+        .floating-text {
+            position: absolute; font-size: 24px; font-weight: 900; color: var(--accent-color);
+            text-shadow: 0 2px 5px rgba(0,0,0,0.8); pointer-events: none; z-index: 100;
+            animation: float-up 1s ease-out forwards;
+        }
+
+        /* --- МАГАЗИН (Снизу) --- */
+        .shop-container {
+            background: var(--glass-bg); backdrop-filter: blur(15px); border-top: 1px solid var(--glass-border);
+            padding: 15px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; height: 140px;
+        }
+
+        .upgrade-card {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); border-radius: 15px;
+            padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; cursor: pointer; transition: transform 0.2s;
+        }
+        .upgrade-card:active { transform: scale(0.95); background: rgba(255, 255, 255, 0.1); }
+        .upgrade-icon { font-size: 24px; margin-bottom: 5px; }
+        .upgrade-title { font-size: 12px; font-weight: 700; margin-bottom: 5px; }
+        .upgrade-cost { font-size: 12px; color: var(--accent-color); font-weight: 900; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 10px; }
+        .squad-card { background: linear-gradient(135deg, rgba(247, 183, 51, 0.2), rgba(241, 39, 17, 0.2)); border-color: var(--accent-color); }
+
+        /* --- ПАНЕЛЬ ВОССТАНОВЛЕНИЯ ЭНЕРГИИ С КРЕСТИКОМ --- */
+        #energy-banner {
+            display: none; position: absolute; bottom: 160px; left: 50%; transform: translateX(-50%);
+            background: linear-gradient(45deg, #11998e, #38ef7d); color: white; border-radius: 20px;
+            padding: 10px 20px; font-weight: bold; box-shadow: 0 5px 15px rgba(56, 239, 125, 0.4);
+            z-index: 20; align-items: center; gap: 15px;
+        }
+        #energy-banner span { cursor: pointer; }
+        .close-banner {
+            background: rgba(0,0,0,0.2); width: 24px; height: 24px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px;
+        }
+
+        /* --- МОДАЛЬНОЕ ОКНО --- */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 999;
+            align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s;
+        }
+        .modal-overlay.active { display: flex; opacity: 1; }
+        .modal-content {
+            background: linear-gradient(135deg, #232526, #414345); border: 2px solid var(--accent-color);
+            border-radius: 20px; padding: 30px 20px; text-align: center; width: 90%; max-width: 320px;
+            position: relative; animation: slide-up 0.3s forwards;
+        }
+        .modal-close {
+            position: absolute; top: 10px; right: 15px; font-size: 20px; color: #aaa; cursor: pointer;
+        }
+        .modal-content h2 { font-size: 24px; color: var(--accent-color); margin-bottom: 10px; }
+        .modal-content p { font-size: 14px; margin-bottom: 20px; color: #ddd; }
+        .action-btn {
+            background: linear-gradient(90deg, #f12711, #f5af19); color: white; border: none;
+            padding: 12px 20px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%;
+        }
+
+        @keyframes float-up { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-100px) scale(1.5); opacity: 0; } }
+        @keyframes pulse-glow { 0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.5; } 100% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; } }
+        @keyframes slide-up { from { transform: translateY(20px); } to { transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <!-- Шапка (Логотип и Баланс) -->
+    <header>
+        <!-- Кружок слева (вызывает модалку группы) -->
+        <div class="logo-circle" onclick="joinGroupManual()"></div>
+        
+        <!-- Баланс -->
+        <div class="balance-box">
+            <h1 id="score">0</h1>
+            <span>Пассив: <b id="passive-val">0</b> / сек</span>
+        </div>
+    </header>
+
+    <main>
+        <div class="clicker-wrapper">
+            <div class="clicker-glow"></div>
+            <div id="clicker-btn"></div>
+        </div>
+
+        <div class="energy-wrapper">
+            <div class="energy-stats">
+                <span>⚡ Энергия</span>
+                <span id="energy-text">100/100</span>
+            </div>
+            <div class="energy-bar-bg">
+                <div id="energy-fill"></div>
+            </div>
+        </div>
+
+        <!-- Панель приглашения с крестиком (Появляется когда нет энергии) -->
+        <div id="energy-banner">
+            <span onclick="restoreEnergy()">Позвать друга (+100 ⚡)</span>
+            <div class="close-banner" onclick="hideEnergyBanner()">✖</div>
+        </div>
+    </main>
+
+    <!-- Магазин -->
+    <div class="shop-container">
+        <div class="upgrade-card" onclick="buyClickUpgrade()">
+            <div class="upgrade-icon">👆</div>
+            <div class="upgrade-title">Мультитап</div>
+            <div class="upgrade-cost" id="click-cost">50 💰</div>
+        </div>
+        <div class="upgrade-card" onclick="buyPassiveUpgrade()">
+            <div class="upgrade-icon">⏱️</div>
+            <div class="upgrade-title">Авто-фарм</div>
+            <div class="upgrade-cost" id="passive-cost">100 💰</div>
+        </div>
+        <div class="upgrade-card squad-card" onclick="joinGroupManual()">
+            <div class="upgrade-icon">🛡️</div>
+            <div class="upgrade-title">Вступить в 1Б42П</div>
+            <div class="upgrade-cost">Бонус x2</div>
+        </div>
+    </div>
+
+    <!-- Модалка Группы -->
+    <div class="modal-overlay" id="group-modal">
+        <div class="modal-content">
+            <div class="modal-close" onclick="closeModal('group-modal')">✖</div>
+            <h2>42, Братуха! 😎</h2>
+            <p>Вступай в элитный 1-й Батальон 42 Пропаганды и получай <b>в 2 раза больше коинов</b> за каждый клик!</p>
+            <button class="action-btn" onclick="confirmJoinGroup()">Вступить и забрать бонус</button>
+        </div>
+    </div>
+
+    <!-- Модалка Истории -->
+    <div class="modal-overlay" id="story-modal">
+        <div class="modal-content">
+            <div class="modal-close" onclick="closeModal('story-modal')">✖</div>
+            <h2>Уровень Кемерово! 🚀</h2>
+            <p>Ты набрал 42 000 коинов. Опубликуй Историю и докажи преданность Батальону!</p>
+            <button class="action-btn" onclick="postStory()">Поделиться в Истории</button>
+        </div>
+    </div>
+
+    <script>
+        vkBridge.send('VKWebAppInit');
+
+        const GROUP_ID = 70000046773741; 
+        const KEMEROVO_LEVEL = 42000; 
+        
+        let state = {
+            score: 0, clickValue: 1, passiveIncome: 0,
+            energy: 100, maxEnergy: 100, clickMultiplier: 1,
+            clickCost: 50, passiveCost: 100,
+            hasJoinedGroup: false, groupPromptShown: false, storyPosted: false,
+            bannerHidden: false // Флаг скрытия баннера крестиком
+        };
+
+        function updateUI() {
+            document.getElementById('score').innerText = Math.floor(state.score).toLocaleString('ru-RU');
+            document.getElementById('passive-val').innerText = state.passiveIncome;
+            document.getElementById('energy-text').innerText = `${Math.floor(state.energy)} / ${state.maxEnergy}`;
+            
+            document.getElementById('energy-fill').style.width = (state.energy / state.maxEnergy) * 100 + '%';
+
+            const btn = document.getElementById('clicker-btn');
+            const banner = document.getElementById('energy-banner');
+            
+            // Если энергии нет
+            if (state.energy <= 0) {
+                btn.style.filter = 'grayscale(100%) opacity(0.5)';
+                // Показываем баннер, только если юзер его не закрывал крестиком
+                if (!state.bannerHidden) banner.style.display = 'flex';
+            } else {
+                btn.style.filter = 'none';
+                banner.style.display = 'none';
+                state.bannerHidden = false; // Сбрасываем флаг скрытия, если энергия пополнилась
+            }
+
+            document.getElementById('click-cost').innerText = state.clickCost + ' 💰';
+            document.getElementById('passive-cost').innerText = state.passiveCost + ' 💰';
+        }
+
+        const clickerBtn = document.getElementById('clicker-btn');
+        clickerBtn.addEventListener('pointerdown', (e) => {
+            if (state.energy >= 1) {
+                vkBridge.send("VKWebAppTapticImpactOccurred", {"style": "light"});
+                let earn = state.clickValue * state.clickMultiplier;
+                state.score += earn;
+                state.energy -= 1;
+                showFloatingText(e, `+${earn}`);
+                updateUI();
+                checkTriggers();
+            } else {
+                vkBridge.send("VKWebAppTapticNotificationOccurred", {"type": "error"});
+            }
+        });
+
+        function showFloatingText(e, text) {
+            const el = document.createElement('div');
+            el.className = 'floating-text';
+            el.innerText = text;
+            let x = e.clientX || (e.touches && e.touches[0].clientX);
+            let y = e.clientY || (e.touches && e.touches[0].clientY);
+            x += (Math.random() - 0.5) * 40;
+            el.style.left = `${x}px`; el.style.top = `${y}px`;
+            document.body.appendChild(el);
+            setTimeout(() => { el.remove(); }, 1000);
+        }
+
+        function checkTriggers() {
+            if (state.score >= 100 && !state.hasJoinedGroup && !state.groupPromptShown) {
+                state.groupPromptShown = true;
+                openModal('group-modal');
+            }
+            if (state.score >= KEMEROVO_LEVEL && !state.storyPosted) {
+                openModal('story-modal');
+            }
+        }
+
+        function buyClickUpgrade() {
+            if (state.score >= state.clickCost) {
+                state.score -= state.clickCost;
+                state.clickValue += 1;
+                state.clickCost = Math.floor(state.clickCost * 1.5);
+                updateUI();
+                vkBridge.send("VKWebAppTapticSelectionChanged");
+            }
+        }
+
+        function buyPassiveUpgrade() {
+            if (state.score >= state.passiveCost) {
+                state.score -= state.passiveCost;
+                state.passiveIncome += 1;
+                state.passiveCost = Math.floor(state.passiveCost * 1.5);
+                updateUI();
+                vkBridge.send("VKWebAppTapticSelectionChanged");
+            }
+        }
+
+        setInterval(() => {
+            state.score += state.passiveIncome;
+            if (state.energy < state.maxEnergy) state.energy += 0.5;
+            if (state.energy > state.maxEnergy) state.energy = state.maxEnergy;
+            updateUI();
+        }, 1000);
+
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+        
+        // Скрыть баннер энергии крестиком
+        function hideEnergyBanner() {
+            state.bannerHidden = true;
+            document.getElementById('energy-banner').style.display = 'none';
+        }
+
+        function confirmJoinGroup() {
+            vkBridge.send("VKWebAppJoinGroup", {"group_id": GROUP_ID})
+                .then((data) => {
+                    if (data.result) {
+                        state.hasJoinedGroup = true;
+                        state.clickMultiplier = 2; 
+                        closeModal('group-modal');
+                        alert("Красава! Множитель клика х2 активирован!");
+                    }
+                }).catch(() => { closeModal('group-modal'); });
+        }
+
+        function joinGroupManual() {
+            if (state.hasJoinedGroup) { alert("Братуха, ты уже в наших рядах!"); return; }
+            openModal('group-modal');
+        }
+
+        function restoreEnergy() {
+            vkBridge.send("VKWebAppShowInviteBox", {})
+                .then((data) => {
+                    if (data.success) {
+                        state.energy = state.maxEnergy;
+                        updateUI();
+                        alert("Энергия восстановлена!");
+                    }
+                }).catch(() => console.log("Не позвал"));
+        }
+
+        function postStory() {
+            const storyUrl = "https://ibb.co/4nKPCxtn"; // ЗАМЕНИ НА СВОЮ
+            vkBridge.send("VKWebAppShowStoryBox", {
+                "background_type": "image", "url": storyUrl, 
+                "attachment": { "text": "play", "type": "url", "url": "https://ok.ru/group/" + GROUP_ID }
+            })
+            .then(() => {
+                state.storyPosted = true;
+                closeModal('story-modal');
+                state.score += 10000;
+                alert("История опубликована! Держи 10,000 коинов!");
+                updateUI();
+            }).catch(() => { closeModal('story-modal'); });
+        }
+
+        updateUI();
+    </script>
+</body>
+</html>
