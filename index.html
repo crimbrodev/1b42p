@@ -361,17 +361,40 @@
         }
 
         function confirmJoinGroup() {
-            vkBridge.send("VKWebAppJoinGroup", {"group_id": GROUP_ID})
-                .then((data) => {
-                    if (data.result) {
-                        state.hasJoinedGroup = true;
-                        state.clickMultiplier = 2; 
+            // Узнаем, откуда открыли игру (из ссылки берутся параметры)
+            const urlParams = new URLSearchParams(window.location.search);
+            const client = urlParams.get('vk_client'); // Вернет 'ok' или 'vk'
+
+            if (client === 'ok') {
+                // ИГРОК В ОДНОКЛАССНИКАХ
+                vkBridge.send("VKWebAppJoinGroup", {"group_id": GROUP_ID})
+                    .then((data) => {
+                        if (data.result) {
+                            giveGroupBonus();
+                        }
+                    })
+                    .catch((error) => {
                         closeModal('group-modal');
-                        alert("Красава! Множитель клика х2 активирован!");
-                    }
-                }).catch(() => { closeModal('group-modal'); });
+                        console.log("Отказ от вступления", error);
+                    });
+            } else {
+                // ИГРОК ВКОНТАКТЕ (или просто в браузере по ссылке)
+                // Окно подписки на группу ОК внутри ВК не работает, поэтому просто кидаем ссылку
+                window.open("https://ok.ru/group/" + GROUP_ID, "_blank");
+                
+                // Даем бонус, чтобы не обижать братух из ВК
+                giveGroupBonus();
+            }
         }
 
+        // Вспомогательная функция, чтобы не дублировать код выдачи бонуса
+        function giveGroupBonus() {
+            state.hasJoinedGroup = true;
+            state.clickMultiplier = 2; 
+            closeModal('group-modal');
+            alert("Красава! Множитель клика х2 активирован!");
+            updateUI();
+        }
         function joinGroupManual() {
             if (state.hasJoinedGroup) { alert("Братуха, ты уже в наших рядах!"); return; }
             openModal('group-modal');
