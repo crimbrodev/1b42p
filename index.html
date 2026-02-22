@@ -221,7 +221,7 @@
             <div class="upgrade-title">Авто-фарм</div>
             <div class="upgrade-cost" id="passive-cost">100 💰</div>
         </div>
-        <div class="upgrade-card squad-card" onclick="joinGroupManual()">
+        <div class="upgrade-card squad-card" id="squad-card-btn" onclick="joinGroupManual()">
             <div class="upgrade-icon">🛡️</div>
             <div class="upgrade-title">Вступить в 1Б42П</div>
             <div class="upgrade-cost">Бонус x2</div>
@@ -248,7 +248,7 @@
         </div>
     </div>
 
-    <script>
+<script>
         vkBridge.send('VKWebAppInit');
 
         const GROUP_ID = 70000046773741; 
@@ -259,9 +259,47 @@
             energy: 100, maxEnergy: 100, clickMultiplier: 1,
             clickCost: 50, passiveCost: 100,
             hasJoinedGroup: false, groupPromptShown: false, storyPosted: false,
-            bannerHidden: false // Флаг скрытия баннера крестиком
+            bannerHidden: false
         };
 
+        // Узнаем платформу
+        const urlParams = new URLSearchParams(window.location.search);
+        const client = urlParams.get('vk_client'); // 'ok' или 'vk'
+
+        // Прячем кнопку группы для ВК, чтобы пройти модерацию (Правило "Без ссылок на другие соцсети")
+        if (client !== 'ok') {
+            document.getElementById('squad-card-btn').style.display = 'none';
+        }
+
+        // --- СИСТЕМА СОХРАНЕНИЯ ПРОГРЕССА (CLOUD SAVE) ---
+        function saveProgress() {
+            vkBridge.send('VKWebAppStorageSet', {
+                key: '1b42p_save',
+                value: JSON.stringify(state)
+            }).catch(e => console.log("Ошибка сохранения", e));
+        }
+
+        function loadProgress() {
+            vkBridge.send('VKWebAppStorageGet', { keys: ['1b42p_save'] })
+            .then((data) => {
+                if (data.keys[0].value) {
+                    // Восстанавливаем старые данные
+                    let savedState = JSON.parse(data.keys[0].value);
+                    // Обновляем текущий state
+                    state = { ...state, ...savedState };
+                    updateUI();
+                }
+            })
+            .catch(e => console.log("Нет сохранений", e));
+        }
+
+        // Загружаем при старте
+        loadProgress();
+
+        // Сохраняем каждые 10 секунд
+        setInterval(saveProgress, 10000);
+
+        // --- ОБНОВЛЕНИЕ ИНТЕРФЕЙСА ---
         function updateUI() {
             document.getElementById('score').innerText = Math.floor(state.score).toLocaleString('ru-RU');
             document.getElementById('passive-val').innerText = state.passiveIncome;
@@ -272,21 +310,26 @@
             const btn = document.getElementById('clicker-btn');
             const banner = document.getElementById('energy-banner');
             
-            // Если энергии нет
             if (state.energy <= 0) {
                 btn.style.filter = 'grayscale(100%) opacity(0.5)';
-                // Показываем баннер, только если юзер его не закрывал крестиком
                 if (!state.bannerHidden) banner.style.display = 'flex';
             } else {
                 btn.style.filter = 'none';
                 banner.style.display = 'none';
-                state.bannerHidden = false; // Сбрасываем флаг скрытия, если энергия пополнилась
+                state.bannerHidden = false; 
             }
 
             document.getElementById('click-cost').innerText = state.clickCost + ' 💰';
             document.getElementById('passive-cost').innerText = state.passiveCost + ' 💰';
+
+            // Если уже в группе - меняем текст на кнопке
+            if (state.hasJoinedGroup && client === 'ok') {
+                document.querySelector('#squad-card-btn .upgrade-cost').innerText = "АКТИВИРОВАНО";
+                document.querySelector('#squad-card-btn .upgrade-cost').style.background = "#27ae60";
+            }
         }
 
+        // --- ЛОГИКА КЛИКА ---
         const clickerBtn = document.getElementById('clicker-btn');
         clickerBtn.addEventListener('pointerdown', (e) => {
             if (state.energy >= 1) {
@@ -315,7 +358,8 @@
         }
 
         function checkTriggers() {
-            if (state.score >= 100 && !state.hasJoinedGroup && !state.groupPromptShown) {
+            // Байт на группу (только в ОК!)
+            if (client === 'ok' && state.score >= 100 && !state.hasJoinedGroup && !state.groupPromptShown) {
                 state.groupPromptShown = true;
                 openModal('group-modal');
             }
@@ -324,12 +368,14 @@
             }
         }
 
+        // --- МАГАЗИН ---
         function buyClickUpgrade() {
             if (state.score >= state.clickCost) {
                 state.score -= state.clickCost;
                 state.clickValue += 1;
                 state.clickCost = Math.floor(state.clickCost * 1.5);
                 updateUI();
+                saveProgress(); // Сохраняем после покупки
                 vkBridge.send("VKWebAppTapticSelectionChanged");
             }
         }
@@ -340,6 +386,7 @@
                 state.passiveIncome += 1;
                 state.passiveCost = Math.floor(state.passiveCost * 1.5);
                 updateUI();
+                saveProgress(); // Сохраняем после покупки
                 vkBridge.send("VKWebAppTapticSelectionChanged");
             }
         }
@@ -354,48 +401,27 @@
         function openModal(id) { document.getElementById(id).classList.add('active'); }
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
         
-        // Скрыть баннер энергии крестиком
         function hideEnergyBanner() {
             state.bannerHidden = true;
             document.getElementById('energy-banner').style.display = 'none';
         }
 
         function confirmJoinGroup() {
-            // Узнаем, откуда открыли игру (из ссылки берутся параметры)
-            const urlParams = new URLSearchParams(window.location.search);
-            const client = urlParams.get('vk_client'); // Вернет 'ok' или 'vk'
-
-            if (client === 'ok') {
-                // ИГРОК В ОДНОКЛАССНИКАХ
-                vkBridge.send("VKWebAppJoinGroup", {"group_id": GROUP_ID})
-                    .then((data) => {
-                        if (data.result) {
-                            giveGroupBonus();
-                        }
-                    })
-                    .catch((error) => {
+            vkBridge.send("VKWebAppJoinGroup", {"group_id": GROUP_ID})
+                .then((data) => {
+                    if (data.result) {
+                        state.hasJoinedGroup = true;
+                        state.clickMultiplier = 2; 
+                        saveProgress();
                         closeModal('group-modal');
-                        console.log("Отказ от вступления", error);
-                    });
-            } else {
-                // ИГРОК ВКОНТАКТЕ (или просто в браузере по ссылке)
-                // Окно подписки на группу ОК внутри ВК не работает, поэтому просто кидаем ссылку
-                window.open("https://ok.ru/group/" + GROUP_ID, "_blank");
-                
-                // Даем бонус, чтобы не обижать братух из ВК
-                giveGroupBonus();
-            }
+                        alert("Красава! Множитель клика х2 активирован!");
+                        updateUI();
+                    }
+                }).catch(() => { closeModal('group-modal'); });
         }
 
-        // Вспомогательная функция, чтобы не дублировать код выдачи бонуса
-        function giveGroupBonus() {
-            state.hasJoinedGroup = true;
-            state.clickMultiplier = 2; 
-            closeModal('group-modal');
-            alert("Красава! Множитель клика х2 активирован!");
-            updateUI();
-        }
         function joinGroupManual() {
+            if (client !== 'ok') return; // В ВК кнопка не работает
             if (state.hasJoinedGroup) { alert("Братуха, ты уже в наших рядах!"); return; }
             openModal('group-modal');
         }
@@ -405,6 +431,7 @@
                 .then((data) => {
                     if (data.success) {
                         state.energy = state.maxEnergy;
+                        saveProgress();
                         updateUI();
                         alert("Энергия восстановлена!");
                     }
@@ -412,21 +439,28 @@
         }
 
         function postStory() {
-            const storyUrl = "https://ibb.co/4nKPCxtn"; // ЗАМЕНИ НА СВОЮ
+            const storyUrl = "https://i.ibb.co/XyXYZ/story42.jpg"; 
+            
+            // ВАЖНО ДЛЯ МОДЕРАЦИИ: Ссылка в истории должна вести на САМУ ИГРУ, а не на группу
+            // Берем ID игры из параметров запуска
+            const appId = urlParams.get('vk_app_id');
+            const appLink = client === 'ok' ? `https://ok.ru/app/${appId}` : `https://vk.com/app${appId}`;
+
             vkBridge.send("VKWebAppShowStoryBox", {
                 "background_type": "image", "url": storyUrl, 
-                "attachment": { "text": "play", "type": "url", "url": "https://ok.ru/group/" + GROUP_ID }
+                "attachment": { "text": "play", "type": "url", "url": appLink }
             })
             .then(() => {
                 state.storyPosted = true;
                 closeModal('story-modal');
                 state.score += 10000;
+                saveProgress();
                 alert("История опубликована! Держи 10,000 коинов!");
                 updateUI();
             }).catch(() => { closeModal('story-modal'); });
         }
 
         updateUI();
-    </script>
+</script>
 </body>
 </html>
